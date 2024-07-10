@@ -39,20 +39,19 @@ func main() {
 	}
 }
 
-func (s *server) Create(_ context.Context, req *desc.CreateRequest) (*desc.CreateResponse, error) {
-	log.Printf("%s\nMethod Create.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
+func (s *server) CreateChat(_ context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
+	log.Printf("%s\nMethod Create-Chat.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
 
-	return &desc.CreateResponse{
+	return &desc.CreateChatResponse{
 		Id: 1,
 	}, nil
 }
 
-func (s *server) Delete(_ context.Context, req *desc.DeleteRequest) (*emptypb.Empty, error) {
-	log.Printf("%s\nMethod Delete.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
+func (s *server) DeleteChat(_ context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
+	log.Printf("%s\nMethod Delete-Chat.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
 
 	return &emptypb.Empty{}, nil
 }
-
 func (s *server) SendMessage(_ context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
 	log.Printf("%s\nMethod SendMessage.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
 
