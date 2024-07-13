@@ -15,7 +15,7 @@ import (
 
 const (
 	grpcPort        = 50052
-	grpcChatApiDesc = "Chat-Api-v1"
+	grpcChatAPIDesc = "Chat-API-v1"
 )
 
 type server struct {
@@ -40,20 +40,20 @@ func main() {
 }
 
 func (s *server) CreateChat(_ context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
-	log.Printf("%s\nMethod Create-Chat.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
+	log.Printf("%s\nMethod Create-Chat.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
 
 	return &desc.CreateChatResponse{
-		Id: 1,
+		ID: 1,
 	}, nil
 }
 
 func (s *server) DeleteChat(_ context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
-	log.Printf("%s\nMethod Delete-Chat.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
+	log.Printf("%s\nMethod Delete-Chat.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
 
 	return &emptypb.Empty{}, nil
 }
 func (s *server) SendMessage(_ context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
-	log.Printf("%s\nMethod SendMessage.\nInput params:\n%+v\n************\n\n", grpcChatApiDesc, req)
+	log.Printf("%s\nMethod SendMessage.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
 
 	return &emptypb.Empty{}, nil
 }
