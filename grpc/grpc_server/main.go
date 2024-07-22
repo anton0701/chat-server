@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -78,16 +79,32 @@ func initLogger() (*zap.Logger, error) {
 func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
 	s.log.Info("Method Create-Chat", zap.Any("input params", req))
 
-	// TODO: добавить проверку на наличие полей в запросе
-	// TODO: текст ошибки вынести в константу
+	// TODO: текст ошибки вынести в константу?
+	// Проверка необходимых полей в запросе, User_IDs должен содеражть хотя бы 1 айди
+	if len(req.User_IDs) == 0 {
+		err := status.Error(codes.InvalidArgument, "User_IDs must contain at least one ID.")
+		s.log.Error("Method Create-Chat.", zap.Error(err))
+		return nil, err
+	}
 
+	// Проверка необходимых полей в запросе, ChatName должен содеражть хотя бы 1 символ (не считая пробелов)
+	trimmedChatName := strings.TrimSpace(req.ChatName)
+	if len(trimmedChatName) == 0 {
+		err := status.Error(codes.InvalidArgument, "Chat name must not be empty")
+		s.log.Error("Method Create-Chat.", zap.Error(err))
+		return nil, err
+	}
+
+	// Создаем транзакцию, чтобы выполнились все запросы к БД ИЛИ не выполнился ни один
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		s.log.Error("Unable to start transaction", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "Unable to start transaction: %v", err)
 	}
+	// Откатываем транзакцию в случае возникновения ошибки
 	defer tx.Rollback(ctx)
 
+	// Билдер первого INSERT запроса в таблицу "chats". Участвует в транзакции
 	builderChatInsert := sq.
 		Insert("chats").
 		PlaceholderFormat(sq.Dollar).
@@ -110,10 +127,10 @@ func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*
 		return nil, status.Errorf(codes.Internal, "Method Create-Chat. Unable to execute INSERT chat query, error: %v", err)
 	}
 
-	s.log.Info("Method Create-Chat. Insert chat",
-		zap.Int64("chat_id", chatID))
-
 	for _, userID := range req.User_IDs {
+		// Билдер второго INSERT запроса в таблицу "chats"
+		// Берем User_IDs из запроса и вставляем в таблицу "chat_users"
+		// Участвует в транзакции
 		builderChatUsersInsert := sq.
 			Insert("chat_users").
 			Columns("chat_id", "user_id").
@@ -132,12 +149,9 @@ func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*
 			s.log.Error("Method Create-Chat. Unable to execute query from builder to insert chat users", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "Method Create-Chat. Unable to execute query from builder to insert chat users: %v", err)
 		}
-
-		s.log.Info("Method Create-Chat. Insert chat users",
-			zap.Int64("chat_id", chatID),
-			zap.Int64("user_id", userID))
 	}
 
+	// Коммит транзакции
 	err = tx.Commit(ctx)
 	if err != nil {
 		s.log.Error("Unable to commit transaction", zap.Error(err))
@@ -152,16 +166,23 @@ func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*
 func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
 	s.log.Info("Method Delete-Chat", zap.Any("Input params", req))
 
-	// TODO: добавить проверку на наличие полей в запросе
-	// TODO: текст ошибки вынести в константу
+	// Проверка необходимых полей. В запросе должен содержаться ID чата
+	if req.ID == 0 {
+		err := status.Error(codes.InvalidArgument, "ID required")
+		s.log.Error("Method Delete-Chat.", zap.Error(err))
+		return nil, err
+	}
 
+	// Создаем транзакцию, чтобы выполнились все запросы к БД ИЛИ не выполнился ни один
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		s.log.Error("Method Delete-Chat. Unable to start transaction. Error info", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "Method Delete-Chat. Unable to start transaction. Error info: %v", err)
 	}
+	// Откатываем транзакцию в случае возникновения ошибки
 	defer tx.Rollback(ctx)
 
+	// Билдер запроса удаления чата из списка чатов. Участвует в транзакции
 	deleteChatBuilder := sq.
 		Delete("chats").
 		PlaceholderFormat(sq.Dollar).
@@ -179,6 +200,7 @@ func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*
 		return nil, status.Errorf(codes.Internal, "Method Delete-Chat. Unable to execute query to delete chat, error: %v", err)
 	}
 
+	// Билдер запроса удаления участников чата из chat_users. Участвует в транзакции
 	deleteChatUsersBuilder := sq.
 		Delete("chat_users").
 		PlaceholderFormat(sq.Dollar).
@@ -206,13 +228,15 @@ func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*
 func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
 	s.log.Info("Method Send-Message", zap.Any("Input params", req))
 
-	// TODO: добавить проверку на наличие полей в запросе
-	// TODO: текст ошибки вынести в константу
-	// TODO: добавить проверку на наличие в БД chat_id и user_id из запроса
+	// TODO: добавить проверку на наличие в БД chat_id и user_id из запроса?
 
-	//if req.Text = "" {
-	//	return nil, status.Errorf()
-	//}
+	// Проверка необходмых полей запроса. MessageText должен содеражть хотя бы 1 символ (не считая пробелов)
+	trimmedMessage := strings.TrimSpace(req.Text)
+	if len(trimmedMessage) == 0 {
+		err := status.Error(codes.InvalidArgument, "Message text must contain at least 1 non-space character")
+		s.log.Error("Method Send-Message.", zap.Error(err))
+		return nil, err
+	}
 
 	var messageID int64
 	insertMessageBuilder := sq.
