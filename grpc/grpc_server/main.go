@@ -78,6 +78,9 @@ func initLogger() (*zap.Logger, error) {
 func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
 	s.log.Info("Method Create-Chat", zap.Any("input params", req))
 
+	// TODO: добавить проверку на наличие полей в запросе
+	// TODO: текст ошибки вынести в константу
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		s.log.Error("Unable to start transaction", zap.Error(err))
@@ -149,6 +152,9 @@ func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*
 func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
 	s.log.Info("Method Delete-Chat", zap.Any("Input params", req))
 
+	// TODO: добавить проверку на наличие полей в запросе
+	// TODO: текст ошибки вынести в константу
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		s.log.Error("Method Delete-Chat. Unable to start transaction. Error info", zap.Error(err))
@@ -197,8 +203,38 @@ func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*
 
 	return &emptypb.Empty{}, nil
 }
-func (s *server) SendMessage(_ context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
-	log.Printf("%s\nMethod SendMessage.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
+func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
+	s.log.Info("Method Send-Message", zap.Any("Input params", req))
+
+	// TODO: добавить проверку на наличие полей в запросе
+	// TODO: текст ошибки вынести в константу
+	// TODO: добавить проверку на наличие в БД chat_id и user_id из запроса
+
+	//if req.Text = "" {
+	//	return nil, status.Errorf()
+	//}
+
+	var messageID int64
+	insertMessageBuilder := sq.
+		Insert("chat_messages").
+		PlaceholderFormat(sq.Dollar).
+		Columns("chat_id", "user_id", "message", "created_at").
+		Values(req.Chat_ID, req.User_IDFrom, req.Text, req.Timestamp.AsTime()).
+		Suffix("RETURNING id")
+
+	query, args, err := insertMessageBuilder.ToSql()
+	if err != nil {
+		s.log.Error("Method Send-Message. Unable to create query to send message", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to create query to send message, error: %v", err)
+	}
+
+	err = s.pool.
+		QueryRow(ctx, query, args...).
+		Scan(&messageID)
+	if err != nil {
+		s.log.Error("Method Send-Message. Unable to execute query to send message", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to execute query to send message, error: %v", err)
+	}
 
 	return &emptypb.Empty{}, nil
 }
