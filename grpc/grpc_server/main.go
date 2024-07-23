@@ -1,0 +1,59 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	desc "github.com/anton0701/chat-server/grpc/pkg/chat_v1"
+)
+
+const (
+	grpcPort        = 50052
+	grpcChatAPIDesc = "Chat-API-v1"
+)
+
+type server struct {
+	desc.UnimplementedChatV1Server
+}
+
+func main() {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	reflection.Register(s)
+	desc.RegisterChatV1Server(s, &server{})
+
+	log.Printf("server listening at %v", lis.Addr())
+
+	if err = s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func (s *server) CreateChat(_ context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
+	log.Printf("%s\nMethod Create-Chat.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
+
+	return &desc.CreateChatResponse{
+		ID: 1,
+	}, nil
+}
+
+func (s *server) DeleteChat(_ context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
+	log.Printf("%s\nMethod Delete-Chat.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
+
+	return &emptypb.Empty{}, nil
+}
+func (s *server) SendMessage(_ context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
+	log.Printf("%s\nMethod SendMessage.\nInput params:\n%+v\n************\n\n", grpcChatAPIDesc, req)
+
+	return &emptypb.Empty{}, nil
+}
