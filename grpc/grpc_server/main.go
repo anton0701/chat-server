@@ -23,9 +23,7 @@ import (
 )
 
 const (
-	grpcPort        = 50052
 	grpcChatAPIDesc = "Chat-API-v1"
-	dbDSN           = "host=localhost port=54322 dbname=chat user=chat-user password=chat-password"
 )
 
 type server struct {

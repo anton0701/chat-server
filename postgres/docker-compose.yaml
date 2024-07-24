@@ -8,8 +8,6 @@ volumes:
 services:
   chat-pg-local:
     image: postgres:14-alpine3.17
-#    env_file:
-#      - "../config/local.env"
     environment:
       POSTGRES_DB: chat
       POSTGRES_USER: chat-user
@@ -21,8 +19,6 @@ services:
 
   chat-pg-prod:
     image: postgres:14-alpine3.17
-#    env_file:
-#      - "../config/prod.env"
     environment:
       POSTGRES_DB: chat
       POSTGRES_USER: chat-user
@@ -31,47 +27,3 @@ services:
       - "54324:5432"
     volumes:
       - chat_postgres_volume_prod:/var/lib/postgresql/data
-
-
-
-
-#  version: '3'
-#
-#  volumes:
-#    postgres_volume_local:
-#    postgres_volume_prod:
-#
-#  services:
-#    pg-local:
-#      image: postgres:14-alpine3.17
-#      env_file:
-#        - "local.env"
-#      ports:
-#        - "54321:5432"
-#      volumes:
-#        - postgres_volume_local:/var/lib/postgresql/data
-#
-#    pg-prod:
-#      image: postgres:14-alpine3.17
-#      env_file:
-#        - prod.env
-#      ports:
-#        - "54322:5432"
-#      volumes:
-#        - postgres_volume_prod:/var/lib/postgresql/data
-#
-#    migrator-local:
-#      build:
-#        context: .
-#        dockerfile: migration_local.Dockerfile
-#      restart: on-failure
-#      environment:
-#        DB_HOST: pg-local
-#
-#    migrator-prod:
-#      build:
-#        context: .
-#        dockerfile: migration_prod.Dockerfile
-#      restart: on-failure
-#      environment:
-#        DB_HOST: pg-prod
