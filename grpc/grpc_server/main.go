@@ -86,10 +86,10 @@ func main() {
 }
 
 func initLogger() (*zap.Logger, error) {
-	var config = zap.NewProductionConfig()
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	zapConfig := zap.NewProductionConfig()
+	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	logger, err := config.Build()
+	logger, err := zapConfig.Build()
 	if err != nil {
 		return nil, err
 	}
