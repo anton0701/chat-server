@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"flag"
 	"log"
 	"net"
 	"strings"
@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	config "github.com/anton0701/chat-server/config"
+	env "github.com/anton0701/chat-server/config/env"
 	desc "github.com/anton0701/chat-server/grpc/pkg/chat_v1"
 )
 
@@ -32,20 +34,42 @@ type server struct {
 	log  *zap.Logger
 }
 
-func main() {
-	ctx := context.Background()
+var configPath string
 
+func init() {
+	flag.StringVar(&configPath, "config-path", ".env", "path to config file")
+}
+
+func main() {
+	flag.Parse()
+	ctx := context.Background()
+	// Инициализируем логгер
 	logger, err := initLogger()
 	if err != nil {
 		log.Fatalf("%s\nUnable to init logger, error: %#v", grpcChatAPIDesc, err)
 	}
+	// Считываем переменные окружения (env vars)
+	err = config.Load(configPath)
+	if err != nil {
+		logger.Fatal("Unable to init config", zap.Error(err))
+	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	grpcConfig, err := env.NewGRPCConfig()
+	if err != nil {
+		logger.Fatal("Unable to get grpc config", zap.Error(err))
+	}
+
+	pgConfig, err := env.NewPGConfig()
+	if err != nil {
+		logger.Fatal("Unable to get postgres config", zap.Error(err))
+	}
+
+	lis, err := net.Listen("tcp", grpcConfig.Address())
 	if err != nil {
 		logger.Panic("Failed to listen", zap.Error(err))
 	}
 
-	pool, err := pgxpool.Connect(ctx, dbDSN)
+	pool, err := pgxpool.Connect(ctx, pgConfig.DSN())
 	if err != nil {
 		logger.Panic("Unable to connect to db", zap.Error(err))
 	}
@@ -64,7 +88,7 @@ func main() {
 }
 
 func initLogger() (*zap.Logger, error) {
-	config := zap.NewProductionConfig()
+	var config = zap.NewProductionConfig()
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	logger, err := config.Build()
