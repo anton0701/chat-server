@@ -38,35 +38,4 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to insert using builder, error: %s", err)
 	}
-
-	log.Printf("inserted chat with id: %d", chatId)
-
-	//builderSelect := sq.Select("id", "name", "email", "role", "created_at", "updated_at").
-	//	From("chat").
-	//	PlaceholderFormat(sq.Dollar).
-	//	OrderBy("id").
-	//	Limit(10)
-	//
-	//query, args, err = builderSelect.ToSql()
-	//if err != nil {
-	//	log.Fatalf("failed to build select query, error: %s", err)
-	//}
-	//
-	//rows, err := pool.Query(ctx, query, args...)
-	//
-	//log.Printf("Select result:\n\n")
-	//for rows.Next() {
-	//	var id int
-	//	var name, email string
-	//	var createdAt time.Time
-	//	var updatedAt sql.NullTime
-	//	var role desc.UserRole
-	//
-	//	err = rows.Scan(&id, &name, &email, &role, &createdAt, &updatedAt)
-	//	if err != nil {
-	//		log.Fatalf("failed to scan row, error: %s", err)
-	//	}
-	//
-	//	log.Printf("id: %v, name: %v, email: %v, createdAt: %v, updatedAt: %v, role: %v", id, name, email, createdAt, updatedAt, role)
-	//}
 }
