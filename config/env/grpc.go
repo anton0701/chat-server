@@ -50,6 +50,8 @@ func NewGRPCConfig() (GRPCConfig, error) {
 	}, nil
 }
 
+// Address string: метод для получения адреса, на котором развернут GRPC-сервер в
+// формате "хост:порт".
 func (cfg *grpcConfig) Address() string {
 	return net.JoinHostPort(cfg.host, cfg.port)
 }
