@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"net"
-	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -112,19 +111,10 @@ func initLogger() (*zap.Logger, error) {
 func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*desc.CreateChatResponse, error) {
 	s.log.Info("Method Create-Chat", zap.Any("input params", req))
 
-	// TODO: текст ошибки вынести в константу?
-	// Проверка необходимых полей в запросе, User_IDs должен содеражть хотя бы 1 айди
-	if len(req.User_IDs) == 0 {
-		err := status.Error(codes.InvalidArgument, "User_IDs must contain at least one ID.")
-		s.log.Error("Method Create-Chat.", zap.Error(err))
-		return nil, err
-	}
-
-	// Проверка необходимых полей в запросе, ChatName должен содеражть хотя бы 1 символ (не считая пробелов)
-	trimmedChatName := strings.TrimSpace(req.ChatName)
-	if len(trimmedChatName) == 0 {
-		err := status.Error(codes.InvalidArgument, "Chat name must not be empty")
-		s.log.Error("Method Create-Chat.", zap.Error(err))
+	// TODO: текст ошибки вынести в константу? сделаю в рамках ДЗ №3 - слоистая архитектура
+	// Валидация полей запроса
+	if err := req.Validate(); err != nil {
+		s.log.Error("Method Create-Chat", zap.Error(err))
 		return nil, err
 	}
 
@@ -210,9 +200,8 @@ func (s *server) CreateChat(ctx context.Context, req *desc.CreateChatRequest) (*
 func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*emptypb.Empty, error) {
 	s.log.Info("Method Delete-Chat", zap.Any("Input params", req))
 
-	// Проверка необходимых полей. В запросе должен содержаться ID чата
-	if req.ID == 0 {
-		err := status.Error(codes.InvalidArgument, "ID required")
+	// Валидация полей запроса
+	if err := req.Validate(); err != nil {
 		s.log.Error("Method Delete-Chat.", zap.Error(err))
 		return nil, err
 	}
@@ -282,13 +271,9 @@ func (s *server) DeleteChat(ctx context.Context, req *desc.DeleteChatRequest) (*
 func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*emptypb.Empty, error) {
 	s.log.Info("Method Send-Message", zap.Any("Input params", req))
 
-	// TODO: добавить проверку на наличие в БД chat_id и user_id из запроса?
-
-	// Проверка необходмых полей запроса. MessageText должен содеражть хотя бы 1 символ (не считая пробелов)
-	trimmedMessage := strings.TrimSpace(req.Text)
-	if len(trimmedMessage) == 0 {
-		err := status.Error(codes.InvalidArgument, "Message text must contain at least 1 non-space character")
-		s.log.Error("Method Send-Message.", zap.Error(err))
+	// Валидация полей запроса
+	if err := req.Validate(); err != nil {
+		s.log.Error("Method Delete-Chat.", zap.Error(err))
 		return nil, err
 	}
 
