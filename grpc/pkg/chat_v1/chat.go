@@ -1,9 +1,10 @@
 package chat_v1
 
 import (
+	"strings"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strings"
 
 	"github.com/anton0701/chat-server/grpc/pkg"
 )
