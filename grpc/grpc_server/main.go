@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/anton0701/chat-server/internal/repository/chat"
 	"log"
 	"net"
 
@@ -19,6 +20,7 @@ import (
 	config "github.com/anton0701/chat-server/config"
 	env "github.com/anton0701/chat-server/config/env"
 	desc "github.com/anton0701/chat-server/grpc/pkg/chat_v1"
+	"github.com/anton0701/chat-server/internal/repository"
 )
 
 const (
@@ -27,8 +29,9 @@ const (
 
 type server struct {
 	desc.UnimplementedChatV1Server
-	pool *pgxpool.Pool
-	log  *zap.Logger
+	pool           *pgxpool.Pool
+	log            *zap.Logger
+	chatRepository repository.ChatRepository
 }
 
 var configPath string
@@ -40,11 +43,13 @@ func init() {
 func main() {
 	flag.Parse()
 	ctx := context.Background()
+
 	// Инициализируем логгер
 	logger, err := initLogger()
 	if err != nil {
 		log.Fatalf("%s\nUnable to init logger, error: %#v", grpcChatAPIDesc, err)
 	}
+
 	// Считываем переменные окружения (env vars)
 	err = config.Load(configPath)
 	if err != nil {
@@ -71,11 +76,14 @@ func main() {
 		logger.Panic("Unable to connect to db", zap.Error(err))
 	}
 
+	chatRepo := chat.NewRepository(pool)
+
 	s := grpc.NewServer()
 	reflection.Register(s)
 	desc.RegisterChatV1Server(s, &server{
-		pool: pool,
-		log:  logger,
+		pool:           pool,
+		log:            logger,
+		chatRepository: chatRepo,
 	})
 	logger.Info("Server listening at", zap.Any("Address", lis.Addr()))
 
@@ -273,31 +281,39 @@ func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) 
 
 	// Валидация полей запроса
 	if err := req.Validate(); err != nil {
-		s.log.Error("Method Delete-Chat.", zap.Error(err))
+		s.log.Error("Method Send-Message.", zap.Error(err))
 		return nil, err
 	}
 
-	var messageID int64
-	insertMessageBuilder := sq.
-		Insert("chat_messages").
-		PlaceholderFormat(sq.Dollar).
-		Columns("chat_id", "user_id", "message", "created_at").
-		Values(req.Chat_ID, req.User_IDFrom, req.Text, req.Timestamp.AsTime()).
-		Suffix("RETURNING id")
-
-	query, args, err := insertMessageBuilder.ToSql()
+	messageID, err := s.chatRepository.AddMessage(ctx, req)
 	if err != nil {
-		s.log.Error("Method Send-Message. Unable to create query to send message", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to create query to send message, error: %v", err)
+		s.log.Error("Method Send-Message.", zap.Error(err))
+		return nil, err
 	}
 
-	err = s.pool.
-		QueryRow(ctx, query, args...).
-		Scan(&messageID)
-	if err != nil {
-		s.log.Error("Method Send-Message. Unable to execute query to send message", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to execute query to send message, error: %v", err)
-	}
+	s.log.Info("Method Send-Message. Success:", zap.Int64("messageID", messageID))
+
+	//var messageID int64
+	//insertMessageBuilder := sq.
+	//	Insert("chat_messages").
+	//	PlaceholderFormat(sq.Dollar).
+	//	Columns("chat_id", "user_id", "message", "created_at").
+	//	Values(req.Chat_ID, req.User_IDFrom, req.Text, req.Timestamp.AsTime()).
+	//	Suffix("RETURNING id")
+	//
+	//query, args, err := insertMessageBuilder.ToSql()
+	//if err != nil {
+	//	s.log.Error("Method Send-Message. Unable to create query to send message", zap.Error(err))
+	//	return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to create query to send message, error: %v", err)
+	//}
+	//
+	//err = s.pool.
+	//	QueryRow(ctx, query, args...).
+	//	Scan(&messageID)
+	//if err != nil {
+	//	s.log.Error("Method Send-Message. Unable to execute query to send message", zap.Error(err))
+	//	return nil, status.Errorf(codes.Internal, "Method Send-Message. Unable to execute query to send message, error: %v", err)
+	//}
 
 	return &emptypb.Empty{}, nil
 }
