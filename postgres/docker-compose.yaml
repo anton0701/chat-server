@@ -1,0 +1,29 @@
+version: '3'
+
+volumes:
+  chat_postgres_volume_local:
+  chat_postgres_volume_prod:
+
+
+services:
+  chat-pg-local:
+    image: postgres:14-alpine3.17
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: chat-user
+      POSTGRES_PASSWORD: chat-password
+    ports:
+      - "54323:5432"
+    volumes:
+      - chat_postgres_volume_local:/var/lib/postgresql/data
+
+  chat-pg-prod:
+    image: postgres:14-alpine3.17
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: chat-user
+      POSTGRES_PASSWORD: chat-password
+    ports:
+      - "54324:5432"
+    volumes:
+      - chat_postgres_volume_prod:/var/lib/postgresql/data
